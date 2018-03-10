@@ -23,6 +23,7 @@ contract MultiSig {
     mapping (address => bool) public isMember; 
 
     struct Transaction {
+        address exeContract;
         address destination;
         uint256 value;
         bytes data;
@@ -99,21 +100,22 @@ contract MultiSig {
         required = _required;
     }
 
-    function submitTransaction(address _from, address _destination, uint _value, bytes _data, string _funcName)
+    function submitTransaction(address _from, address _destination, uint _value, bytes _data, address _contract, string _funcName)
         internal
         returns (uint transactionId)
     {
-        transactionId = addTransaction(_destination, _value, _data, _funcName);
+        transactionId = addTransaction(_destination, _value, _data, _contract, _funcName);
         confirmTransaction(_from, transactionId);
     }
 
-    function addTransaction(address _destination, uint _value, bytes _data, string _funcName)
+    function addTransaction(address _destination, uint _value, bytes _data, address _contract, string _funcName)
         internal
         notNull(_destination)
         returns (uint transactionId)
     {
         transactionId = transactionCount;
         transactions[transactionId] = Transaction({
+            exeContract: _contract,
             destination: _destination,
             value: _value,
             data: _data,
@@ -139,10 +141,10 @@ contract MultiSig {
         internal
         notExecuted(_transactionId)
     {
-        if (isConfirmed(_transactionId) && exeContract != address(0)) {
+        if (isConfirmed(_transactionId)) {
             Transaction storage txn = transactions[_transactionId];
             txn.executed = true;
-            if (exeContract.call(bytes32(keccak256(txn.funcName)), txn.destination, txn.value)) {
+            if (txn.exeContract.call(bytes32(keccak256(txn.funcName)), txn.destination, txn.value)) {
                 Execution(_transactionId);
             } else {
                 ExecutionFailure(_transactionId);
