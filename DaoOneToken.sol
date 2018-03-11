@@ -49,14 +49,20 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     uint256 public lockPeriod = 1 years;
     uint256 public startTime = now;
     bool    public transferEnable = false;
-    address public crowdfundWallet;
-    address public coreWallet;
+    
+    address[] public ownerWallets;
+    mapping (address => bool) public isOwnerWallet;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) allowed;
 
     modifier lockIsOver() {
         require(now >= startTime.add(lockPeriod));
+        _;
+    }
+
+    modifier isOwnerWallet(address _walletAddress) {
+        require(isOwnerWallet[_walletAddress]);
         _;
     }
 
@@ -77,9 +83,7 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         public 
         returns (bool success) 
     {
-        if ( (msg.sender != owner && transferEnable) ||
-            (msg.sender == owner)
-        ) {
+        if (transferEnable || (isOwnerWallet[msg.sender])) {
             if (balances[msg.sender] >= _value && balances[_to] + _value >= balances[_to]) {
                 balances[msg.sender] = balances[msg.sender].sub(_value);
                 balances[_to] = balances[_to].add(_value);
@@ -120,7 +124,6 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     {
         return allowed[_owner][_spender];
     }
-
    
     function setLockPeriod(uint256 _time) 
         onlyOwner 
@@ -141,7 +144,6 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
 }
 
 /**
-    Contract Topology:
     CoreWallet------------------------------+
     |   MultiSig----------------------------|  \\
     |   |   DaoOneToken---------------------|===\\
@@ -172,11 +174,9 @@ contract CoreWallet is MultiSig, NonZero {
     {
         dot = new DaoOneToken(initSupply, decimals);
         rw = new RewardWallet();
-        crowd = new CrowdfundWallet(crowdfunding);
+        crowd = new CrowdfundWallet(crowdfunding, dot);
         dot.transfer(address(crowd), crowdfunding);
     }
-
-    event Support(address indexed supporter, uint256 supportValue, uint256 dotValue, uint256 refundEther);
 
     // 多签名token转移提议  _funcName: transfer(address, uint256)
     function transferSubmission(address _destination, uint256 _value, bytes _data, address _exeContract, string _funcName)
@@ -222,29 +222,6 @@ contract CoreWallet is MultiSig, NonZero {
         }
     }
 
-    // @todo 计算逻辑转移
-    function support() 
-        payable 
-        public 
-    {
-        require(crowd.remainingSupply() <= dot.balanceOf(crowd));
-        uint256 distrbution;
-        uint256 _refund = 0;
-        if ((msg.value > 0) && (crowd.tokenExchange(msg.value) < crowd.remainingSupply)) {
-            if (msg.value > crowd.exchangeEtherLimit) {
-                // 超过兑换限制会把多余的退回去
-                _refund = msg.value.sub(crowd.exchangeEtherLimit);
-                msg.sender.transfer(_refund);
-                distrbution = crowd.tokenExchange(crowd.exchangeEtherLimit);
-            } else {
-                distrbution = crowd.tokenExchange(msg.value);
-            }
-            dot.transferFrom(crowd, msg.sender, distrbution);
-            crowd.remainingMinus(distrbution);
-        }
-        Support(msg.sender, msg.value, distrbution, _refund);
-    }
-
 }
 
 /**
@@ -257,32 +234,51 @@ contract RewardWallet is Owned {
     }
 }
 
+/**
+ *  CrowdfundWallet
+ *  
+ */
 contract CrowdfundWallet is Owned, NonZero {
     using SafeMath for uint256;
 
+    DaoOneToken public dot;
     uint8 public exchangeRate = 100;
     uint256 public exchangeEtherLimit = 10 ether;
     uint256 public remainingSupply;
 
-    function CrowdfundWallet(uint256 _remainingSupply) public {
+    event Support(address indexed supporter, uint256 supportValue, uint256 dotValue, uint256 refundEther);
+
+    function CrowdfundWallet(uint256 _remainingSupply, DaoOneToken _dot) public {
         owner = msg.sender;
         remainingSupply = _remainingSupply;
+        dot = _dot;
+    }
+
+    function support() payable public {
+        uint256 distrbution;
+        uint256 _refund = 0;
+        if ((msg.value > 0) && (tokenExchange(msg.value) < dot.balanceOf(this))) {
+            if (msg.value > exchangeEtherLimit) {
+                // 超过兑换限制会把多余的退回去
+                _refund = msg.value.sub(exchangeEtherLimit);
+                msg.sender.transfer(_refund);
+                distrbution = tokenExchange(exchangeEtherLimit);
+            } else {
+                distrbution = tokenExchange(msg.value);
+            }
+            dot.transfer(msg.sender, distrbution);
+        }
+        Support(msg.sender, msg.value, distrbution, _refund);
     }
 
     function tokenExchange(uint256 _amount)
-        external
+        internal
         returns (uint256)
     {
         return _amount.mul(exchangeRate);    
     }
 
-    function remainingMinus(uint256 _value) 
-        external
-        onlyOwner
-    {
-        remainingSupply.sub(_value);
-    }
-
+    // Through CoreWallet Call
     function changeRate(address _noUse, uint8 _newRate) 
         external
         onlyOwner
@@ -291,6 +287,7 @@ contract CrowdfundWallet is Owned, NonZero {
         exchangeRate = _newRate;
     }
 
+    // Through CoreWallet Call
     function withdraw(address _to, uint256 _value)
         external
         onlyOwner
