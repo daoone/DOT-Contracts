@@ -203,7 +203,7 @@ contract CoreWallet is MultiSig, NonZero {
         dot.transfer(address(crowd), crowdfunding);
     }
 
-    // 多签名token转移提议  _funcName: transfer(address, uint256)
+    //  eg: @_funcName transfer(address, uint256)
     function transferSubmission(address _destination, uint256 _value, bytes _data, address _exeContract, string _funcName)
         external
         memberExists(msg.sender)
@@ -212,14 +212,14 @@ contract CoreWallet is MultiSig, NonZero {
     {
         return submitTransaction(msg.sender, _destination, _value, _data, _exeContract, _funcName);
     }
-    // 确认提议
+    
     function transferConfirmation(uint _transactionId)
         memberExists(msg.sender)
         external
     {
         confirmTransaction(msg.sender, _transactionId);
     }
-    // 否决提议
+    
     function transferVeto(uint _transactionId)
         memberExists(msg.sender)
         external
@@ -227,7 +227,7 @@ contract CoreWallet is MultiSig, NonZero {
         revokeConfirmation(msg.sender, _transactionId);
     }
 
-    // 补充执行决议
+    // additional Transaction Execution
     function transferExecution(uint _transactionId)
         external
         memberExists(msg.sender)
@@ -295,7 +295,7 @@ contract CrowdfundWallet is Owned, NonZero {
         uint256 _refund = 0;
         if ((msg.value > 0) && (tokenExchange(msg.value) < dot.balanceOf(this))) {
             if (msg.value > exchangeEtherLimit) {
-                // 超过兑换限制会把多余的退回去
+                // Do Refund
                 _refund = msg.value.sub(exchangeEtherLimit);
                 msg.sender.transfer(_refund);
                 distrbution = tokenExchange(exchangeEtherLimit);

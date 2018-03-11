@@ -5,21 +5,15 @@ pragma solidity ^0.4.18;
  *
  */
 contract MultiSig {
-    // 总拥有者
     uint public maxMemberCount; 
-    // 要求表决人数
     uint public required; 
     uint public transactionCount;
-    // 拥有者地址
+    
     address[] public members; 
-    // 将要执行的token协议
     address internal exeContract; 
 
-    // 所有交易
     mapping (uint => Transaction) public transactions;
-    // 所有交易表决
     mapping (uint => mapping (address => bool)) public confirmations;
-    // 拥有者列表和对应状态
     mapping (address => bool) public isMember; 
 
     struct Transaction {
