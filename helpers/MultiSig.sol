@@ -123,7 +123,7 @@ contract MultiSig {
         if (isConfirmed(_transactionId)) {
             Transaction storage txn = transactions[_transactionId];
             txn.executed = true;
-            if (txn.exeContract.call(bytes32(keccak256(txn.funcName)), txn.destination, txn.value)) {
+            if (txn.exeContract.call(bytes4(bytes32(keccak256(txn.funcName))), txn.destination, txn.value)) {
                 Execution(_transactionId);
             } else {
                 ExecutionFailure(_transactionId);
