@@ -85,21 +85,6 @@ contract MultiSig {
         _;
     }
 
-    /**
-        Constructor
-     */
-    function MultiSig(address[] _members, uint _required) 
-        public 
-        validRequirement(_members.length, _required)
-    {
-        for (uint i = 0; i < _members.length; i++) {
-            require (!isMember[_members[i]] && _members[i] != address(0));
-            isMember[_members[i]] = true;
-        }
-        members = _members;
-        required = _required;
-    }
-
     function submitTransaction(address _from, address _destination, uint _value, bytes _data, address _contract, string _funcName)
         internal
         returns (uint transactionId)

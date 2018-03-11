@@ -32,13 +32,10 @@ contract ERC20Token {
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 }
 
-
-/**
- *  DaoOneToken
- *  @title DaoOneToken - Main activities in DaoOne ecosystem.
- *  @author Steak Guo - <cookedsteak708@gmail.com>
- *  @caution All parameters of external functions should follow the sequence as <address, value>
- */
+//  DaoOneToken
+//  @title DaoOneToken - Main activities in DaoOne ecosystem.
+//  @author Steak Guo - <cookedsteak708@gmail.com>
+//  @caution All parameters of external functions should follow the sequence as <address, value>
 contract DaoOneToken is Owned, ERC20Token, NonZero {
     using SafeMath for uint256;
 
@@ -56,12 +53,14 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) allowed;
 
+    event AddWallets(address[] _wallets);
+
     modifier lockIsOver() {
         require(now >= startTime.add(lockPeriod));
         _;
     }
 
-    modifier isOwnerWallet(address _walletAddress) {
+    modifier ownerWalletExists(address _walletAddress) {
         require(isOwnerWallet[_walletAddress]);
         _;
     }
@@ -125,6 +124,19 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         return allowed[_owner][_spender];
     }
    
+
+    function addOwnerWallets(address[] _ownerWallets) 
+        public 
+        onlyOwner 
+    {
+        for (uint i = 0; i < _ownerWallets.length; i++) {
+            require (!isOwnerWallet[_ownerWallets[i]] && _ownerWallets[i] != address(0));
+            isOwnerWallet[_ownerWallets[i]] = true;
+        }
+        AddWallets(_ownerWallets);
+    }
+
+
     function setLockPeriod(uint256 _time) 
         onlyOwner 
         public 
@@ -138,8 +150,6 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     {
         transferEnable = _enable;
     }
-
-
     
 }
 
@@ -166,15 +176,29 @@ contract CoreWallet is MultiSig, NonZero {
     CrowdfundWallet public crowd;
 
     function CoreWallet(
+        address[] _members, 
+        uint _required,
         uint256 initSupply,
         uint8 decimals,
         uint256 crowdfunding
         )
         public
+        validRequirement(_members.length, _required)
     {
+        for (uint i = 0; i < _members.length; i++) {
+            require (!isMember[_members[i]] && _members[i] != address(0));
+            isMember[_members[i]] = true;
+        }
+        members = _members;
+        required = _required;
+        
         dot = new DaoOneToken(initSupply, decimals);
         rw = new RewardWallet();
         crowd = new CrowdfundWallet(crowdfunding, dot);
+        address[] memory ad = new address[](2);
+        ad[0] = rw;
+        ad[1] = crowd;
+        dot.addOwnerWallets(ad);
         dot.transfer(address(crowd), crowdfunding);
     }
 
@@ -224,9 +248,7 @@ contract CoreWallet is MultiSig, NonZero {
 
 }
 
-/**
-    RewardWallet
- */
+// Reward Wallet
 contract RewardWallet is Owned {
     
     function RewardWallet() public {
@@ -234,10 +256,7 @@ contract RewardWallet is Owned {
     }
 }
 
-/**
- *  CrowdfundWallet
- *  
- */
+// Crowdfund Wallet
 contract CrowdfundWallet is Owned, NonZero {
     using SafeMath for uint256;
 
