@@ -225,13 +225,14 @@ contract CoreWallet is MultiSig, NonZero {
     {
         revokeConfirmation(msg.sender, _transactionId);
     }
-    // 执行决议
+
+    // 补充执行决议
     function transferExecution(uint _transactionId)
         external
         memberExists(msg.sender)
         notExecuted(_transactionId)
     {
-        require(isConfirmed(_transactionId));
+        executeTransaction(_transactionId);
     }
 
     // Add new members or Add required counts
@@ -250,9 +251,24 @@ contract CoreWallet is MultiSig, NonZero {
 
 // Reward Wallet
 contract RewardWallet is Owned {
-    
-    function RewardWallet() public {
+    using SafeMath for uint256;
+
+    address public admin;
+    DaoOneToken public dot;
+
+    event GiveRewards(address indexed user, uint256 value, address indexed admin);
+
+    function RewardWallet(address _admin, DaoOneToken _dot) public {
         owner = msg.sender;
+        admin = _admin;
+        dot = _dot;
+    }
+
+    function giveRewards(address _to, uint256 _value) public {
+        require(msg.sender == admin);
+        require(_value < dot.balanceOf(this));
+        dot.transfer(_to, _value);
+        GiveRewards(_to, _value, msg.sender);
     }
 }
 
