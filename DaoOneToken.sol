@@ -54,6 +54,7 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     mapping (address => mapping (address => uint256)) allowed;
 
     event AddWallets(address[] _wallets);
+    event DisableWallet(address indexed wallet);
 
     modifier lockIsOver() {
         require(now >= startTime.add(lockPeriod));
@@ -80,7 +81,7 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
 
     function transfer(address _to, uint256 _value) 
         public 
-        returns (bool success) 
+        returns (bool success)
     {
         if (transferEnable || (isOwnerWallet[msg.sender])) {
             if (balances[msg.sender] >= _value && balances[_to] + _value >= balances[_to]) {
@@ -94,17 +95,18 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     }
 
     function transferFrom(address _from, address _to, uint256 _value) 
-        onlyOwner 
         public 
         returns (bool success) 
     {
-        if (balances[_from] >= _value && allowed[_from][msg.sender] >= _value && _value > 0) {
-            balances[_to] = balances[_to].add(_value);
-            balances[_from] = balances[_from].sub(_value);
-            allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
-            Transfer(_from, _to, _value);
-            return true; 
-        } 
+        if (transferEnable || (isOwnerWallet[msg.sender])) {
+            if (balances[_from] >= _value && allowed[_from][msg.sender] >= _value && _value > 0) {
+                balances[_to] = balances[_to].add(_value);
+                balances[_from] = balances[_from].sub(_value);
+                allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
+                Transfer(_from, _to, _value);
+                return true; 
+            } 
+        }
         return false;
     } 
 
@@ -124,7 +126,6 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         return allowed[_owner][_spender];
     }
    
-
     function addOwnerWallets(address[] _ownerWallets) 
         public 
         onlyOwner 
@@ -136,6 +137,11 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         AddWallets(_ownerWallets);
     }
 
+    function disableWallet(address _walletAddress) public {
+        require(isOwnerWallet[_walletAddress] && _walletAddress != address(0));
+        isOwnerWallet[_walletAddress] = false;
+        DisableWallet(_walletAddress);
+    }
 
     function setLockPeriod(uint256 _time) 
         onlyOwner 
@@ -151,6 +157,9 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         transferEnable = _enable;
     }
     
+    function getOwnerWallets() external constant returns (address[]) {
+        return ownerWallets;
+    }
 }
 
 /**
@@ -174,6 +183,7 @@ contract CoreWallet is MultiSig, NonZero {
     DaoOneToken     public dot;
     RewardWallet    public rw;
     CrowdfundWallet public crowd;
+    address public initialOwner;
 
     function CoreWallet(
         address[] _members, 
@@ -192,7 +202,8 @@ contract CoreWallet is MultiSig, NonZero {
         }
         members = _members;
         required = _required;
-        
+        initialOwner = msg.sender;
+
         dot = new DaoOneToken(initSupply, decimals);
         rw = new RewardWallet(_rewardAdmin, dot);
         crowd = new CrowdfundWallet(crowdfunding, dot);
@@ -201,6 +212,12 @@ contract CoreWallet is MultiSig, NonZero {
         ad[1] = crowd;
         dot.addOwnerWallets(ad);
         dot.transfer(address(crowd), crowdfunding);
+    }
+
+    function changeDotAddress(address dotDeployed) public {
+        require(msg.sender == initialOwner);
+        dot = DaoOneToken(dotDeployed);
+
     }
 
     //  eg: @_funcName transfer(address, uint256)
