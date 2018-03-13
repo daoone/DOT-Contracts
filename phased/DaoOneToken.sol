@@ -151,13 +151,23 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         for (uint i = 0; i < _ownerWallets.length; i++) {
             require (!isOwnerWallet[_ownerWallets[i]] && _ownerWallets[i] != address(0));
             isOwnerWallet[_ownerWallets[i]] = true;
+            ownerWallets.push(_ownerWallets[i]);
         }
         AddWallets(_ownerWallets);
     }
 
-    function disableWallet(address _walletAddress) public {
+    function disableWallet(address _walletAddress) 
+        onlyOwner
+        public 
+    {
         require(isOwnerWallet[_walletAddress] && _walletAddress != address(0));
         isOwnerWallet[_walletAddress] = false;
+        for (uint i = 0; i < ownerWallets.length; i++) {
+            if (ownerWallets[i] == _walletAddress) {
+                delete ownerWallets[i];
+                return;
+            }
+        }
         DisableWallet(_walletAddress);
     }
 
