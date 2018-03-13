@@ -91,6 +91,8 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         owner = msg.sender;
         balances[owner] = initialSupply;
         decimals = decimalUnits;
+        isOwnerWallet[msg.sender] = true;
+        ownerWallets.push(msg.sender);
     }
 
     function balanceOf(address _owner) constant public returns (uint256 balance) {
