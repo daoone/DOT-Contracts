@@ -88,6 +88,7 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         public 
     {
         // owner is CoreWallet
+        totalSupply = initialSupply;
         owner = msg.sender;
         balances[owner] = initialSupply;
         decimals = decimalUnits;
@@ -145,10 +146,19 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
     {
         return allowed[_owner][_spender];
     }
+
+    function addTotalSupply(uint256 _value) 
+        onlyOwner
+        public 
+    {
+        require(_value > 0);
+        balances[msg.sender] = balances[msg.sender].add(_value);
+        totalSupply = totalSupply.add(_value);
+    }
    
     function addOwnerWallets(address[] _ownerWallets) 
-        public 
-        onlyOwner 
+        onlyOwner
+        public
     {
         for (uint i = 0; i < _ownerWallets.length; i++) {
             require (!isOwnerWallet[_ownerWallets[i]] && _ownerWallets[i] != address(0));
@@ -191,7 +201,6 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         return ownerWallets;
     }
 }
-
 
 /**
  * Math operations with safety checks
