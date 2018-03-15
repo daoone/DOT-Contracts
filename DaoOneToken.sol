@@ -66,12 +66,12 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         _;
     }
 
-    function DaoOneToken(uint256 initialSupply, uint8 decimalUnits) 
+    function DaoOneToken(uint256 initialSupply, uint8 decimalUnits)
+        Owned()
         public 
     {
         // owner is CoreWallet
         totalSupply = initialSupply;
-        owner = msg.sender;
         balances[owner] = initialSupply;
         decimals = decimalUnits;
         isOwnerWallet[msg.sender] = true;
@@ -183,23 +183,6 @@ contract DaoOneToken is Owned, ERC20Token, NonZero {
         return ownerWallets;
     }
 }
-
-/**
-    CoreWallet------------------------------+
-    |   MultiSig----------------------------|  \\
-    |   |   DaoOneToken---------------------|===\\
-    |   |   |   [CoreWallet] => $dot$       |=====》 API
-    |   |   |   [RewardWallet] => $dot$     |===//
-    |   |   +-------------------------------+  //
-    |   |   RewardWallet--------------------|
-    |   |   |                               |
-    |   |   +-------------------------------+
-    |   |   CrowdfundWallet-----------------|
-    |   |   |                               |
-    |   |   +-------------------------------+
-    |   +-----------------------------------+
-    +---------------------------------------+
- */
 
 contract CoreWallet is MultiSig, NonZero {
     DaoOneToken     public dot;
