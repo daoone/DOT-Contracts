@@ -5,7 +5,7 @@ pragma solidity ^0.4.18;
  *
  */
 contract MultiSig {
-    uint public maxMemberCount; 
+    uint public maxMemberCount = 6; 
     uint public required; 
     uint public transactionCount;
     
