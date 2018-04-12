@@ -10,7 +10,7 @@ contract RewardWallet is Owned {
     DaoOneToken public dot;
 
     event GiveRewards(address indexed user, uint256 value, address indexed admin);
-    event ChangeAdmin(address indexed oldAdmin, address indexed newAdmin);
+    event ChangeAdmin(address indexed oldAdmin, address indexed newAdmin, uint256 NoUseValue);
 
     function RewardWallet(address _admin, DaoOneToken _dot) public {
         owner = msg.sender;
@@ -30,7 +30,7 @@ contract RewardWallet is Owned {
         onlyOwner
     {
         if (_admin != address(0x0)) {
-            ChangeAdmin(admin, _admin);
+            ChangeAdmin(admin, _admin, _value);
             admin = _admin;
         }
     }
