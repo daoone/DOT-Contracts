@@ -93,4 +93,21 @@ contract CoreWallet is MultiSig, NonZero {
             required = uint(_newRequired);
         }
     }
+
+    function removeMember(address _member, uint256 _newRequired)
+        internal
+        memberExists(_member)
+    {
+        isMember[_member] = false;
+        for (uint i=0; i<members.length - 1; i++)
+            if (members[i] == _member) {
+                members[i] = members[members.length - 1];
+                break;
+            }
+        members.length -= 1;    
+        
+        if (_newRequired > 0) {
+            required = uint(_newRequired);
+        }
+    }
 }
